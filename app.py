@@ -1,46 +1,16 @@
 from flask import Flask, request, render_template
 from datetime import datetime, timedelta
-from apscheduler.schedulers.background import BackgroundScheduler
-import atexit
-import logging
-from alertmanager import Alert, AlertManager
+from werkzeug.wsgi import DispatcherMiddleware
+from prometheus_client import make_wsgi_app, Gauge
+import time
 
 
 app = Flask(__name__)
 
-status = {}
+# adds the prometheus /metrics route
+app_dispatch = DispatcherMiddleware(app, {'/metrics': make_wsgi_app()})
 
-def check_status():
-    for key in status.keys():
-        customer, environment = key.split(':')
-        last_reported = status[key]
-        if (datetime.now() - last_reported).total_seconds() > 30:
-            logging.info("deadman expired: {} - {}, last reported on {}, current time is {}".format(customer, environment, last_reported, datetime.now()))
-            data = {
-                    "labels": {
-                        "alertname": "Deadman Alert",
-                        "customer": customer,
-                        "environment": environment,
-                        "severity": "critical",
-                        "name": "{} - {} - Prometheus not responding".format(customer, environment)
-                    },
-                    "annotations": {
-                        "description": "Prometheus not responding",
-                        "summary": "Prometheus not responding"
-                    }
-                    }
-            a = Alert.from_dict(data)
-            am = AlertManager(host="http://18.191.186.205")
-            am.post_alerts(a)
-
-
-logging.basicConfig()
-
-scheduler = BackgroundScheduler()
-scheduler.add_job(func=check_status, trigger="interval", seconds=30)
-scheduler.start()
-atexit.register(lambda: scheduler.shutdown())
-
+gauges = {}
 
 @app.route('/')
 def index():
@@ -48,17 +18,21 @@ def index():
 
 @app.route('/ping', methods=['POST'])
 def ping():
-    timestamp = datetime.now()
     customer = request.form['customer']
     environment = request.form['environment']
     key = "{}:{}".format(customer, environment)
-    status[key] = timestamp
-    return 'OK\n'
+    try: # update existing Gauge
+        gauges[key].set_to_current_time()
+    except KeyError: # Gauge doesn't exist yet, create then update it
+        gauges[key] = Gauge(key, 'Prometheus Deadman timestamp', multiprocess_mode='max')
+        gauges[key].set_to_current_time()
+    return '{} - {}\n'.format(key, gauges[key]._value.get())
 
 @app.route('/list')
 def list():
     curtime = datetime.now()
-    return render_template('list.html', curtime=curtime, status=status)
+    return render_template('list.html', curtime=curtime, status=gauges)
 
-
-
+@app.template_filter('dt')
+def _jinja2_filter_datetime(t):
+    return time.ctime(t)

@@ -10,7 +10,7 @@
             {% for i in status %}
             <tr>
                 <td>{{ i }}</td>
-                <td>{{ status[i] }}</td>
+                <td>{{ status[i]._value.get()|dt }}</td>
             </tr>
             {% endfor %}
         </table>
