@@ -18,8 +18,9 @@ def index():
 
 @app.route('/ping', methods=['POST'])
 def ping():
-    customer = request.form['customer']
-    environment = request.form['environment']
+    req_data = request.get_json()
+    customer = req_data['commonLabels']['customer']
+    environment = req_data['commonLabels']['environment']
     key = "{}:{}".format(customer, environment)
     try: # update existing Gauge
         gauges[key].set_to_current_time()
