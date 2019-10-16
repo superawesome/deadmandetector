@@ -1,0 +1,3 @@
+apscheduler==3.6.1
+Flask==1.1.1
+pylertalertmanager==0.1.1
