@@ -11,6 +11,11 @@ Remote instances are grouped based on 2 Labels- "customer" and "environment".
 
 NOTE: This detector does not save its state anywhere other than in-memory! If it's restarted, it will forget about all previously-received alerts. That means if you restart it while a remote Prometheus is down, there will not be any alert generated for that instance! This will likely be improved in future versions.
 
+You can manually inject entries (with the current timestamp) like this:
+```shell
+curl -v -H "Content-Type: application/json" localhost:54306/ping -d '{"commonLabels":{"customer":"test","environment":"testcluster"}}'
+```
+
 
 The remote Prometheus instances should be configured to send an alert like this:
 
