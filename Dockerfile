@@ -6,6 +6,6 @@ WORKDIR /app
 
 RUN apk --no-cache add uwsgi uwsgi-python3 uwsgi-http && pip --no-cache-dir install -r requirements.txt
 
-EXPOSE 5000
+EXPOSE 80
 
-CMD uwsgi --plugin python3,http --http 0.0.0.0:5000 --wsgi-file app.py --callable app_dispatch -H /usr/local/ --processes 1 --threads 4 --uid nobody --master
+CMD uwsgi --plugin python3,http --http 0.0.0.0:80 --wsgi-file app.py --callable app_dispatch -H /usr/local/ --processes 1 --threads 4 --uid nobody --master
